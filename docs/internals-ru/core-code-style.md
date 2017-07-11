@@ -1,12 +1,11 @@
-Стиль кодирования Yii2 framework
-==============================
+Стиль кодирования Yii 2 framework
+=================================
 
 Описанный ниже стиль кодирования используется при разработке ядра Yii 2.x и его официальных расширений. Если вы хотите участвовать в разработке фреймворка, постарайтесь придерживаться данного стиля. Мы не принуждаем вас использовать этот стиль при разработке ваших приложений с использованием Yii 2. В данном случае можете использовать тот стиль, который вам больше подходит.
 
 Пример конфигурационного файла для CodeSniffer вы можете найти здесь: https://github.com/yiisoft/yii2-coding-standards
 
-1. Обзор
------------
+## 1. Обзор
 
 В общем, мы используем совместимый со стандартом [PSR-2](https://github.com/php-fig/fig-standards/blob/master/accepted/PSR-2-coding-style-guide.md) стиль, так что все положения [PSR-2](https://github.com/php-fig/fig-standards/blob/master/accepted/PSR-2-coding-style-guide.md) вполне применимы к нашему стилю кодирования.
 
@@ -21,8 +20,7 @@
 - Имена свойств ДОЛЖНЫ начинаться с подчеркивания если они объявлены с использованием модификатора `private`;
 - Всегда используйте `elseif` вместо `else if`.
 
-2. Файлы
---------
+## 2. Файлы
 
 ### 2.1. Теги PHP
 
@@ -35,13 +33,11 @@
 
 PHP код должен содержать только символы в кодировке UTF-8 без BOM.
 
-3. Имена Классов
---------------
+## 3. Имена Классов
 
 Имена классов ДОЛЖНЫ быть определены используя `StudlyCaps`. Например, `Controller`, `Model`.
 
-4. Классы
-----------
+## 4. Классы
 
 В данном случае, под классом подразумеваются все классы и интерфейсы.
 
@@ -137,7 +133,7 @@ class Foo
 
 ### 4.4 Блоки Документации
 
-`@param`, `@var`, `@property` и `@return` должны описывать типы `boolean`, `integer`, `string`, `array` или `null`. Вы можете использовать и имена классов, например `Model` или `ActiveRecord`. Для типизированных массивов используйте `ClassName[]`.
+`@param`, `@var`, `@property` и `@return` должны описывать типы `bool`, `int`, `string`, `array` или `null`. Вы можете использовать и имена классов, например `Model` или `ActiveRecord`. Для типизированных массивов используйте `ClassName[]`.
 
 ### 4.5 Конструкторы
 
@@ -199,7 +195,7 @@ $sql = "SELECT *"
     . "WHERE `id` = 121 ";
 ```
 
-### 5.3 Массивы 
+### 5.3 Массивы
 
 Для массивов мы используем краткий синтаксис, появившийся в PHP 5.4.
 
@@ -353,7 +349,7 @@ $mul = array_reduce($numbers, function($r, $x) use($n) {
 <?php
 /**
  * Returns the errors for all attribute or a single attribute.
- * @param string $attribute attribute name. Use null to retrieve errors for all attributes.
+ * @param string $attribute attribute name. Use `null` to retrieve errors for all attributes.
  * @property array An array of errors for all attributes. Empty array is returned if no error.
  * The result is a two-dimensional array. See [[getErrors()]] for detailed description.
  * @return array errors for all attributes or the specified attribute. Empty array is returned if no error.
@@ -473,7 +469,7 @@ public function getEventHandlers($name)
 ### Каталоги/пространства имен
 
 - Используйте нижний регистр;
-- используйте множественную форму для существительных, представляющих объекты (например валидаторы);
-- используйте единичную форму для имен, представляющих соответствующий функционал (например web);
+- используйте множественное число для существительных, представляющих объекты (например валидаторы);
+- используйте единственное число для имен, представляющих соответствующий функционал (например web);
 - предпочтительнее использовать однословные пространства имён;
 - если одно слово использовать не удаётся, используйте camelCase стиль.

@@ -41,7 +41,7 @@ $fullName = ArrayHelper::getValue($user, function ($user, $defaultValue) {
 });
 ```
 
-Третий, необязательный, аргумент определяет значение по-умолчанию. Если не установлен – равен null. Используется так:
+Третий, необязательный, аргумент определяет значение по-умолчанию. Если не установлен – равен `null`. Используется так:
 
 ```php
 $username = ArrayHelper::getValue($comment, 'user.username', 'Unknown');
@@ -81,7 +81,7 @@ if (!ArrayHelper::keyExists('username', $data1, false) || !ArrayHelper::keyExist
 Часто нужно извлечь столбец значений из многомерного массива или объекта. Например, список ID.
 
 ```php
-$data = [
+$array = [
     ['id' => '123', 'data' => 'abc'],
     ['id' => '345', 'data' => 'def'],
 ];

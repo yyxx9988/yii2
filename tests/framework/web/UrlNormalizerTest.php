@@ -10,6 +10,8 @@ namespace yiiunit\framework\web;
 
 use Yii;
 use yii\web\NotFoundHttpException;
+use yii\web\Request;
+use yii\web\UrlManager;
 use yii\web\UrlNormalizer;
 use yii\web\UrlNormalizerRedirectException;
 use yiiunit\TestCase;
@@ -69,7 +71,7 @@ class UrlNormalizerTest extends TestCase
 
         // 301 redirect as default action
         $normalizer->action = UrlNormalizer::ACTION_REDIRECT_PERMANENT;
-        $expected = new UrlNormalizerRedirectException($route[0], $route[1], 301);
+        $expected = new UrlNormalizerRedirectException([$route[0]] + $route[1], 301);
         try {
             $result = $normalizer->normalizeRoute($route);
             $this->fail('Expected throwing UrlNormalizerRedirectException');
@@ -79,7 +81,7 @@ class UrlNormalizerTest extends TestCase
 
         // 302 redirect as default action
         $normalizer->action = UrlNormalizer::ACTION_REDIRECT_TEMPORARY;
-        $expected = new UrlNormalizerRedirectException($route[0], $route[1], 302);
+        $expected = new UrlNormalizerRedirectException([$route[0]] + $route[1], 302);
         try {
             $result = $normalizer->normalizeRoute($route);
             $this->fail('Expected throwing UrlNormalizerRedirectException');
@@ -113,5 +115,42 @@ class UrlNormalizerTest extends TestCase
         } catch (NotFoundHttpException $exc) {
             $this->assertEquals($expected, $exc);
         }
+    }
+
+    /**
+     * Test usage of UrlNormalizer in UrlManager
+     *
+     * trailing slash is insignificant if normalizer is enabled
+     */
+    public function testUrlManager()
+    {
+        $config = [
+            'enablePrettyUrl' => true,
+            'cache' => null,
+            'normalizer' => [
+                'class' => 'yii\web\UrlNormalizer',
+                'action' => null,
+            ],
+        ];
+        $request = new Request();
+
+        // pretty URL without rules
+        $config['rules'] = [];
+        $manager = new UrlManager($config);
+        $request->pathInfo = '/module/site/index/';
+        $result = $manager->parseRequest($request);
+        $this->assertEquals(['module/site/index', []], $result);
+
+        // pretty URL with rules
+        $config['rules'] = [
+            [
+                'pattern' => 'post/<id>/<title>',
+                'route' => 'post/view',
+            ],
+        ];
+        $manager = new UrlManager($config);
+        $request->pathInfo = 'post/123/this+is+sample/';
+        $result = $manager->parseRequest($request);
+        $this->assertEquals(['post/view', ['id' => '123', 'title' => 'this+is+sample']], $result);
     }
 }

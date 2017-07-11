@@ -50,9 +50,20 @@ However, most content described here are also applicable to Active Record for No
 
 ## Declaring Active Record Classes <span id="declaring-ar-classes"></span>
 
-To get started, declare an Active Record class by extending [[yii\db\ActiveRecord]]. Because each Active Record
-class is associated with a database table, in this class you should override the [[yii\db\ActiveRecord::tableName()|tableName()]]
-method to specify which table the class is associated with.
+To get started, declare an Active Record class by extending [[yii\db\ActiveRecord]]. 
+
+### Setting a table name
+
+By default each Active Record class is associated with its database table.
+The [[yii\db\ActiveRecord::tableName()|tableName()]] method returns the table name by converting the class name via [[yii\helpers\Inflector::camel2id()]].
+You may override this method if the table is not named after this convention.
+
+Also a default [[yii\db\Connection::$tablePrefix|tablePrefix]] can be applied. For example if
+ [[yii\db\Connection::$tablePrefix|tablePrefix]] is `tbl_`, `Customer` becomes `tbl_customer` and `OrderItem` becomes `tbl_order_item`. 
+
+If a table name is given as `{{%TableName}}`, then the percentage character `%` will be replaced with the table prefix. 
+For example, `{{%post}}` becomes `{{tbl_post}}`. The brackets around the table name are used for
+[quoting in an SQL query](db-dao.md#quoting-table-and-column-names).
 
 In the following example, we declare an Active Record class named `Customer` for the `customer` database table.
 
@@ -71,11 +82,12 @@ class Customer extends ActiveRecord
      */
     public static function tableName()
     {
-        return 'customer';
+        return '{{customer}}';
     }
 }
 ```
 
+### Active records are called "models"
 Active Record instances are considered as [models](structure-models.md). For this reason, we usually put Active Record
 classes under the `app\models` namespace (or other namespaces for keeping model classes). 
 
@@ -458,6 +470,28 @@ $customer->loadDefaultValues();
 ```
 
 
+### Attributes Typecasting <span id="attributes-typecasting"></span>
+
+Being populated by query results [[yii\db\ActiveRecord]] performs automatic typecast for its attribute values, using
+information from [database table schema](db-dao.md#database-schema). This allows data retrieved from table column
+declared as integer to be populated in ActiveRecord instance with PHP integer, boolean with boolean and so on.
+However, typecasting mechanism has several limitations:
+
+* Float values are not be converted and will be represented as strings, otherwise they may loose precision.
+* Conversion of the integer values depends on the integer capacity of the operation system you use. In particular:
+  values of column declared as 'unsigned integer' or 'big integer' will be converted to PHP integer only at 64-bit
+  operation system, while on 32-bit ones - they will be represented as strings.
+
+Note that attribute typecast is performed only during populating ActiveRecord instance from query result. There is no
+automatic conversion for the values loaded from HTTP request or set directly via property access.
+The table schema will also be used while preparing SQL statements for the ActiveRecord data saving, ensuring
+values are bound to the query with correct type. However, ActiveRecord instance attribute values will not be
+converted during saving process.
+
+> Tip: you may use [[yii\behaviors\AttributeTypecastBehavior]] to facilitate attribute values typecasting
+  on ActiveRecord validation or saving.
+
+
 ### Updating Multiple Rows <span id="updating-multiple-rows"></span>
 
 The methods described above all work on individual Active Record instances, causing inserting or updating of individual
@@ -602,8 +636,15 @@ try {
 } catch(\Exception $e) {
     $transaction->rollBack();
     throw $e;
+} catch(\Throwable $e) {
+    $transaction->rollBack();
+    throw $e;
 }
 ```
+
+> Note: in the above code we have two catch-blocks for compatibility 
+> with PHP 5.x and PHP 7.x. `\Exception` implements the [`\Throwable` interface](http://php.net/manual/en/class.throwable.php)
+> since PHP 7.0, so you can skip the part with `\Exception` if your app uses only PHP 7.0 and higher.
 
 The second way is to list the DB operations that require transactional support in the [[yii\db\ActiveRecord::transactions()]]
 method. For example,
@@ -1010,17 +1051,17 @@ In the code example above, we are modifying the relational query by appending an
 >
 > ```php
 > $orders = Order::find()->select(['id', 'amount'])->with('customer')->all();
-> // $orders[0]->customer is always null. To fix the problem, you should do the following:
+> // $orders[0]->customer is always `null`. To fix the problem, you should do the following:
 > $orders = Order::find()->select(['id', 'amount', 'customer_id'])->with('customer')->all();
 > ```
 
 
 ### Joining with Relations <span id="joining-with-relations"></span>
 
-> Note: The content described in this subsection is only applicable to relational databases, such as 
+> Note: The content described in this subsection is only applicable to relational databases, such as
   MySQL, PostgreSQL, etc.
 
-The relational queries that we have described so far only reference the primary table columns when 
+The relational queries that we have described so far only reference the primary table columns when
 querying for the primary data. In reality we often need to reference columns in the related tables. For example,
 we may want to bring back the customers who have at least one active order. To solve this problem, we can
 build a join query like the following:
@@ -1115,6 +1156,17 @@ Since version 2.0.7, Yii provides a shortcut for this. You may now define and us
 ```php
 // join the orders relation and sort the result by orders.id
 $query->joinWith(['orders o'])->orderBy('o.id');
+```
+
+The above syntax works for simple relations. If you need an alias for an intermediate table when joining over
+nested relations, e.g. `$query->joinWith(['orders.product'])`,
+you need to nest the joinWith calls like in the following example:
+
+```php
+$query->joinWith(['orders o' => function($q) {
+        $q->joinWith('product p');
+    }])
+    ->where('o.amount > 100');
 ```
 
 ### Inverse Relations <span id="inverse-relations"></span>
@@ -1313,12 +1365,12 @@ You can use most of the relational query features that have been described in th
 By default, all Active Record queries are supported by [[yii\db\ActiveQuery]]. To use a customized query class
 in an Active Record class, you should override the [[yii\db\ActiveRecord::find()]] method and return an instance
 of your customized query class. For example,
- 
+
 ```php
+// file Comment.php
 namespace app\models;
 
 use yii\db\ActiveRecord;
-use yii\db\ActiveQuery;
 
 class Comment extends ActiveRecord
 {
@@ -1327,42 +1379,49 @@ class Comment extends ActiveRecord
         return new CommentQuery(get_called_class());
     }
 }
-
-class CommentQuery extends ActiveQuery
-{
-    // ...
-}
 ```
 
-Now whenever you are performing a query (e.g. `find()`, `findOne()`) or defining a relation (e.g. `hasOne()`) 
-with `Comment`, you will be working with an instance of `CommentQuery` instead of `ActiveQuery`.
+Now whenever you are performing a query (e.g. `find()`, `findOne()`) or defining a relation (e.g. `hasOne()`)
+with `Comment`, you will be calling an instance of `CommentQuery` instead of `ActiveQuery`.
 
-> Tip: In big projects, it is recommended that you use customized query classes to hold most query-related code
-  so that the Active Record classes can be kept clean.
-
-You can customize a query class in many creative ways to improve your query building experience. For example,
-you can define new query building methods in a customized query class: 
+You now have to define the `CommentQuery` class, which can be customized in many creative ways to improve your query building experience. For example,
 
 ```php
+// file CommentQuery.php
+namespace app\models;
+
+use yii\db\ActiveQuery;
+
 class CommentQuery extends ActiveQuery
 {
+    // conditions appended by default (can be skipped)
+    public function init()
+    {
+        $this->andOnCondition(['deleted' => false]);
+        parent::init();
+    }
+
+    // ... add customized query methods here ...
+
     public function active($state = true)
     {
-        return $this->andWhere(['active' => $state]);
+        return $this->andOnCondition(['active' => $state]);
     }
 }
 ```
 
-> Note: Instead of calling [[yii\db\ActiveQuery::where()|where()]], you usually should call
-  [[yii\db\ActiveQuery::andWhere()|andWhere()]] or [[yii\db\ActiveQuery::orWhere()|orWhere()]] to append additional
-  conditions when defining new query building methods so that any existing conditions are not overwritten.
+> Note: Instead of calling [[yii\db\ActiveQuery::onCondition()|onCondition()]], you usually should call
+  [[yii\db\ActiveQuery::andOnCondition()|andOnCondition()]] or [[yii\db\ActiveQuery::orOnCondition()|orOnCondition()]] to append additional conditions when defining new query building methods so that any existing conditions are not overwritten.
 
 This allows you to write query building code like the following:
- 
+
 ```php
 $comments = Comment::find()->active()->all();
 $inactiveComments = Comment::find()->active(false)->all();
 ```
+
+> Tip: In big projects, it is recommended that you use customized query classes to hold most query-related code
+  so that the Active Record classes can be kept clean.
 
 You can also use the new query building methods when defining relations about `Comment` or performing relational query:
 
@@ -1375,11 +1434,18 @@ class Customer extends \yii\db\ActiveRecord
     }
 }
 
-$customers = Customer::find()->with('activeComments')->all();
+$customers = Customer::find()->joinWith('activeComments')->all();
 
 // or alternatively
- 
-$customers = Customer::find()->with([
+class Customer extends \yii\db\ActiveRecord
+{
+    public function getComments()
+    {
+        return $this->hasMany(Comment::className(), ['customer_id' => 'id']);
+    }
+}
+
+$customers = Customer::find()->joinWith([
     'comments' => function($q) {
         $q->active();
     }
@@ -1459,8 +1525,9 @@ $customers = Customer::find()
     ->all();
 ```
 
-A disadvantage of using this method would be that if the information isn't loaded on the SQL query it has to be calculated
-separately, which also means that newly saved records won't contain the information from any extra field:
+A disadvantage of using this method would be that, if the information isn't loaded on the SQL query - it has to be calculated
+separately. Thus, if you have found particular record via regular query without extra select statements, it
+will be unable to return actual value for the extra field. Same will happen for the newly saved record.
 
 ```php
 $room = new Room();
@@ -1468,7 +1535,7 @@ $room->length = 100;
 $room->width = 50;
 $room->height = 2;
 
-$room->volume; // this value will be null since it was not declared yet
+$room->volume; // this value will be `null`, since it was not declared yet
 ```
 
 Using the [[yii\db\BaseActiveRecord::__get()|__get()]] and [[yii\db\BaseActiveRecord::__set()|__set()]] magic methods
@@ -1506,26 +1573,26 @@ class Room extends \yii\db\ActiveRecord
 When the select query doesn't provide the volume, the model will be able to calculate it automatically using
 the attributes of the model.
 
-Similary it can be used on extra fields depending on relational data:
+You can calculate the aggregation fields as well using defined relations:
 
 ```php
 class Customer extends \yii\db\ActiveRecord
 {
     private $_ordersCount;
-    
+
     public function setOrdersCount($count)
     {
         $this->_ordersCount = (int) $count;
     }
-    
+
     public function getOrdersCount()
     {
         if ($this->isNewRecord) {
             return null; // this avoid calling a query searching for null primary keys
         }
-        
+
         if ($this->_ordersCount === null) {
-            $this->setOrdersCount(count($this->orders));
+            $this->setOrdersCount($this->getOrders()->count()); // calculate aggregation on demand from relation
         }
 
         return $this->_ordersCount;
@@ -1538,4 +1605,55 @@ class Customer extends \yii\db\ActiveRecord
         return $this->hasMany(Order::className(), ['customer_id' => 'id']);
     }
 }
+```
+
+With this code, in case 'ordersCount' is present in 'select' statement - `Customer::ordersCount` will be populated
+by query results, otherwise it will be calculated on demand using `Customer::orders` relation.
+
+This approach can be as well used for creation of the shortcuts for some relational data, especially for the aggregation.
+For example:
+
+```php
+class Customer extends \yii\db\ActiveRecord
+{
+    /**
+     * Defines read-only virtual property for aggregation data.
+     */
+    public function getOrdersCount()
+    {
+        if ($this->isNewRecord) {
+            return null; // this avoid calling a query searching for null primary keys
+        }
+        
+        return empty($this->ordersAggregation) ? 0 : $this->ordersAggregation[0]['counted'];
+    }
+
+    /**
+     * Declares normal 'orders' relation.
+     */
+    public function getOrders()
+    {
+        return $this->hasMany(Order::className(), ['customer_id' => 'id']);
+    }
+
+    /**
+     * Declares new relation based on 'orders', which provides aggregation.
+     */
+    public function getOrdersAggregation()
+    {
+        return $this->getOrders()
+            ->select(['customer_id', 'counted' => 'count(*)'])
+            ->groupBy('customer_id')
+            ->asArray(true);
+    }
+
+    // ...
+}
+
+foreach (Customer::find()->with('ordersAggregation')->all() as $customer) {
+    echo $customer->ordersCount; // outputs aggregation data from relation without extra query due to eager loading
+}
+
+$customer = Customer::findOne($pk);
+$customer->ordersCount; // output aggregation data from lazy loaded relation
 ```

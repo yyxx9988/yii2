@@ -1,4 +1,10 @@
 <?php
+/**
+ * @link http://www.yiiframework.com/
+ * @copyright Copyright (c) 2008 Yii Software LLC
+ * @license http://www.yiiframework.com/license/
+ */
+
 namespace yiiunit\framework\base;
 
 use yii\base\Object;
@@ -18,7 +24,7 @@ class ObjectTest extends TestCase
     {
         parent::setUp();
         $this->mockApplication();
-        $this->object = new NewObject;
+        $this->object = new NewObject();
     }
 
     protected function tearDown()
@@ -60,8 +66,8 @@ class ObjectTest extends TestCase
 
     public function testGetProperty()
     {
-        $this->assertTrue('default' === $this->object->Text);
-        $this->setExpectedException('yii\base\UnknownPropertyException');
+        $this->assertSame('default', $this->object->Text);
+        $this->expectException('yii\base\UnknownPropertyException');
         $value2 = $this->object->Caption;
     }
 
@@ -70,49 +76,50 @@ class ObjectTest extends TestCase
         $value = 'new value';
         $this->object->Text = $value;
         $this->assertEquals($value, $this->object->Text);
-        $this->setExpectedException('yii\base\UnknownPropertyException');
+        $this->expectException('yii\base\UnknownPropertyException');
         $this->object->NewMember = $value;
     }
 
     public function testSetReadOnlyProperty()
     {
-        $this->setExpectedException('yii\base\InvalidCallException');
+        $this->expectException('yii\base\InvalidCallException');
         $this->object->object = 'test';
     }
 
     public function testIsset()
     {
         $this->assertTrue(isset($this->object->Text));
-        $this->assertFalse(empty($this->object->Text));
+        $this->assertNotEmpty($this->object->Text);
 
         $this->object->Text = '';
         $this->assertTrue(isset($this->object->Text));
-        $this->assertTrue(empty($this->object->Text));
+        $this->assertEmpty($this->object->Text);
 
         $this->object->Text = null;
         $this->assertFalse(isset($this->object->Text));
-        $this->assertTrue(empty($this->object->Text));
+        $this->assertEmpty($this->object->Text);
 
         $this->assertFalse(isset($this->object->unknownProperty));
-        $this->assertTrue(empty($this->object->unknownProperty));
+        $isEmpty = empty($this->object->unknownProperty);
+        $this->assertTrue($isEmpty);
     }
 
     public function testUnset()
     {
         unset($this->object->Text);
         $this->assertFalse(isset($this->object->Text));
-        $this->assertTrue(empty($this->object->Text));
+        $this->assertEmpty($this->object->Text);
     }
 
     public function testUnsetReadOnlyProperty()
     {
-        $this->setExpectedException('yii\base\InvalidCallException');
+        $this->expectException('yii\base\InvalidCallException');
         unset($this->object->object);
     }
 
     public function testCallUnknownMethod()
     {
-        $this->setExpectedException('yii\base\UnknownMethodException');
+        $this->expectException('yii\base\UnknownMethodException');
         $this->object->unknownMethod();
     }
 
@@ -128,7 +135,7 @@ class ObjectTest extends TestCase
 
     public function testObjectProperty()
     {
-        $this->assertTrue($this->object->object instanceof NewObject);
+        $this->assertInstanceOf(NewObject::className(), $this->object->object);
         $this->assertEquals('object text', $this->object->object->text);
         $this->object->object->text = 'new text';
         $this->assertEquals('new text', $this->object->object->text);
@@ -148,10 +155,8 @@ class ObjectTest extends TestCase
 
     public function testReadingWriteOnlyProperty()
     {
-        $this->setExpectedException(
-            'yii\base\InvalidCallException',
-            'Getting write-only property: yiiunit\framework\base\NewObject::writeOnly'
-        );
+        $this->expectException('yii\base\InvalidCallException');
+        $this->expectExceptionMessage('Getting write-only property: yiiunit\framework\base\NewObject::writeOnly');
         $this->object->writeOnly;
     }
 }
@@ -177,7 +182,7 @@ class NewObject extends Object
     public function getObject()
     {
         if (!$this->_object) {
-            $this->_object = new self;
+            $this->_object = new self();
             $this->_object->_text = 'object text';
         }
 
@@ -196,5 +201,7 @@ class NewObject extends Object
         return $this->_items;
     }
 
-    public function setWriteOnly() {}
+    public function setWriteOnly()
+    {
+    }
 }
